@@ -5,6 +5,27 @@ $checkIntervalMs = 500
 
 
 
+Write-Host "Wait for 'explorer.exe'"
+while (-not (Get-Process -Name explorer -ErrorAction SilentlyContinue)) {
+    Start-Sleep -Milliseconds 500
+}
+
+Write-Host "Wait for 'TrayWindowHandle'"
+Add-Type @"
+using System;
+using System.Runtime.InteropServices;
+public class Shell32 {
+    [DllImport("user32.dll", SetLastError = true)]
+    public static extern IntPtr FindWindow(string lpClassName, string lpWindowName);
+}
+"@
+
+while ([Shell32]::FindWindow("Shell_TrayWnd", $null) -eq [IntPtr]::Zero) {
+    Start-Sleep -Milliseconds 500
+}
+
+Start-Sleep -Seconds 1
+
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
 
@@ -24,6 +45,8 @@ $exitItem.Add_Click({
 $contextMenu.Items.Add($exitItem) | Out-Null
 
 $notify.ContextMenuStrip = $contextMenu
+
+
 
 $signature = @"
 [DllImport("kernel32.dll")]
@@ -62,6 +85,7 @@ public class WinAPI {
     public const uint SWP_SHOWWINDOW = 0x0040;
 }
 "@
+
 
 Write-Host "Checking for partial window title '$partialTitle' every $($checkIntervalMs)ms"
 Write-Host ""
